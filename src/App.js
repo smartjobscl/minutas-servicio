@@ -1,5 +1,4 @@
-/* eslint-disable no-loop-func */
-import React, { useState, useRef } from "react";
+/* eslint-disable no-loop-func */import React, { useState, useRef } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
 import './App.css';
