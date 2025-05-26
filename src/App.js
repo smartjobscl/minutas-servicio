@@ -7,7 +7,6 @@ export default function App() {
   const [sede, setSede] = useState("");
   const [tecnico, setTecnico] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [correoJefe, setCorreoJefe] = useState("");
   const [imagenes, setImagenes] = useState([]);
   const [nombreTecnicoFirma, setNombreTecnicoFirma] = useState("");
   const [nombreClienteFirma, setNombreClienteFirma] = useState("");
@@ -21,6 +20,19 @@ export default function App() {
 
   const generarPDF = async () => {
     const doc = new jsPDF();
+
+    // Logo (ajusta el nombre/logo según tu archivo: logo.png o logo.jpg)
+    const logoUrl = process.env.PUBLIC_URL + '/logo.png';
+    await new Promise((resolve) => {
+      const img = new window.Image();
+      img.crossOrigin = "Anonymous";
+      img.src = logoUrl;
+      img.onload = () => {
+        doc.addImage(img, 'PNG', 10, 10, 30, 20);
+        resolve();
+      };
+      img.onerror = resolve; // Si falla igual sigue
+    });
 
     // Fecha actual
     const fechaActual = new Date();
@@ -72,13 +84,6 @@ export default function App() {
     doc.addImage(firmaCliente, "PNG", 100, yOffset + 10, 50, 20);
 
     doc.save(`Minutas_de_Servicio_${sede}.pdf`);
-
-    // Abrir Gmail (opcional)
-    const para = encodeURIComponent(`made.l@smartjobscl.com${correoJefe ? "," + correoJefe : ""}`);
-    const asunto = encodeURIComponent(`Minutas de Servicio - ${sede}`);
-    const cuerpo = encodeURIComponent(`Sede: ${sede}\nTécnico: ${tecnico}`);
-    const gmailURL = `https://mail.google.com/mail/?view=cm&fs=1&to=${para}&su=${asunto}&body=${cuerpo}`;
-    window.open(gmailURL, "_blank");
   };
 
   return (
@@ -106,12 +111,7 @@ export default function App() {
           rows={3}
           required
         />
-        <input
-          type="email"
-          placeholder="Correo de jefe de tienda (opcional)"
-          value={correoJefe}
-          onChange={e => setCorreoJefe(e.target.value)}
-        />
+        {/* Eliminado campo de correo */}
 
         <label style={{marginTop:10}}>Subir fotos</label>
         <input
@@ -175,7 +175,7 @@ export default function App() {
             </button>
           </div>
         </div>
-        <button className="enviar" type="submit">Generar PDF y Abrir Gmail</button>
+        <button className="enviar" type="submit">Generar PDF</button>
       </form>
     </div>
   );
