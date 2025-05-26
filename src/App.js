@@ -74,15 +74,6 @@ export default function App() {
   doc.save(`Minutas_de_Servicio_${sede}.pdf`);
 };
 
-
-    // Abrir Gmail (opcional)
-    const para = encodeURIComponent(`made.l@smartjobscl.com${correoJefe ? "," + correoJefe : ""}`);
-    const asunto = encodeURIComponent(`Minutas de Servicio - ${sede}`);
-    const cuerpo = encodeURIComponent(`Sede: ${sede}\nTécnico: ${tecnico}`);
-    const gmailURL = `https://mail.google.com/mail/?view=cm&fs=1&to=${para}&su=${asunto}&body=${cuerpo}`;
-    window.open(gmailURL, "_blank");
-  };
-
   return (
     <div className="contenedor">
       <h2>Minutas de Servicio</h2>
