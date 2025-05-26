@@ -171,4 +171,3 @@ export default function App() {
         <button className="enviar" type="submit">Generar PDF y Abrir Gmail</button>
       </form>
     </div>
-  );
