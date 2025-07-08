@@ -5,7 +5,7 @@ import jsPDF from "jspdf";
 function App() {
   const [sede, setSede] = useState("");
   const [tecnico, setTecnico] = useState("");
-  const [responsable, setResponsable] = useState("");  // Nuevo campo
+  const [responsable, setResponsable] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [imagenes, setImagenes] = useState([]);
 
@@ -93,92 +93,124 @@ function App() {
     doc.save(`Minuta_${sede}.pdf`);
   };
 
+  // ESTILOS para el contenedor responsivo y letra grande
+  const estiloContenedor = {
+    maxWidth: 400,
+    margin: "auto",
+    padding: 10,
+    fontFamily: "Arial",
+    fontSize: "1.6em", // 100% más grande
+    background: "#f7f7f7",
+    borderRadius: 12,
+  };
+
+  const estiloInput = {
+    fontSize: "1em",
+    padding: 8,
+    marginBottom: 10,
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 6,
+    border: "1px solid #ccc"
+  };
+
+  const estiloFirma = {
+    marginBottom: 24,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center"
+  };
+
   return (
-    <div style={{ maxWidth: 600, margin: "auto", padding: 20, fontFamily: "Arial" }}>
-      <h2 style={{ textAlign: "center" }}>Minuta de Trabajo</h2>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <input
-          type="text"
-          placeholder="Sede"
-          value={sede}
-          onChange={(e) => setSede(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Técnico"
-          value={tecnico}
-          onChange={(e) => setTecnico(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Responsable o jefe de tienda"
-          value={responsable}
-          onChange={(e) => setResponsable(e.target.value)}
-          required
-        />
-        <textarea
-          placeholder="Descripción del trabajo"
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-          rows={4}
-          required
-        />
-        <label><strong>Subir fotografías</strong></label>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleImageChange}
-        />
+    <div style={estiloContenedor}>
+      <h2 style={{ textAlign: "center", fontSize: "2em" }}>Minuta de Trabajo</h2>
+      <input
+        style={estiloInput}
+        type="text"
+        placeholder="Sede"
+        value={sede}
+        onChange={(e) => setSede(e.target.value)}
+        required
+      />
+      <input
+        style={estiloInput}
+        type="text"
+        placeholder="Técnico"
+        value={tecnico}
+        onChange={(e) => setTecnico(e.target.value)}
+        required
+      />
+      <input
+        style={estiloInput}
+        type="text"
+        placeholder="Responsable o jefe de tienda"
+        value={responsable}
+        onChange={(e) => setResponsable(e.target.value)}
+        required
+      />
+      <textarea
+        style={estiloInput}
+        placeholder="Descripción del trabajo"
+        value={descripcion}
+        onChange={(e) => setDescripcion(e.target.value)}
+        rows={3}
+        required
+      />
+      <label style={{ marginBottom: 5 }}><strong>Subir fotografías</strong></label>
+      <input
+        style={{ ...estiloInput, fontSize: "1em", padding: 0 }}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleImageChange}
+      />
 
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-          <div>
-            <p><strong>Firma Técnico:</strong></p>
-            <SignatureCanvas
-              ref={firmaTecnicoRef}
-              penColor="black"
-              canvasProps={{
-                width: 250,
-                height: 100,
-                className: "sigCanvas",
-                style: { border: "1px solid #000" },
-              }}
-            />
-            <button onClick={limpiarFirmaTecnico} style={{ marginTop: 4 }}>Limpiar Firma Técnico</button>
-          </div>
-
-          <div>
-            <p><strong>Firma Responsable:</strong></p>
-            <SignatureCanvas
-              ref={firmaResponsableRef}
-              penColor="black"
-              canvasProps={{
-                width: 250,
-                height: 100,
-                className: "sigCanvas",
-                style: { border: "1px solid #000" },
-              }}
-            />
-            <button onClick={limpiarFirmaResponsable} style={{ marginTop: 4 }}>Limpiar Firma Responsable</button>
-          </div>
-        </div>
-
-        <button
-          onClick={generarPDF}
-          style={{
-            padding: 10,
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            marginTop: 20,
+      {/* FIRMAS: ahora van una debajo de otra */}
+      <div style={estiloFirma}>
+        <p><strong>Firma Técnico:</strong></p>
+        <SignatureCanvas
+          ref={firmaTecnicoRef}
+          penColor="black"
+          canvasProps={{
+            width: 300,
+            height: 90,
+            className: "sigCanvas",
+            style: { border: "2px solid #000", borderRadius: 8 }
           }}
-        >
-          Generar PDF
-        </button>
+        />
+        <button onClick={limpiarFirmaTecnico} style={{ marginTop: 8, fontSize: "1em", width: 200 }}>Limpiar Firma Técnico</button>
       </div>
+
+      <div style={estiloFirma}>
+        <p><strong>Firma Responsable:</strong></p>
+        <SignatureCanvas
+          ref={firmaResponsableRef}
+          penColor="black"
+          canvasProps={{
+            width: 300,
+            height: 90,
+            className: "sigCanvas",
+            style: { border: "2px solid #000", borderRadius: 8 }
+          }}
+        />
+        <button onClick={limpiarFirmaResponsable} style={{ marginTop: 8, fontSize: "1em", width: 200 }}>Limpiar Firma Responsable</button>
+      </div>
+
+      <button
+        onClick={generarPDF}
+        style={{
+          padding: 16,
+          backgroundColor: "#007bff",
+          color: "white",
+          border: "none",
+          borderRadius: 8,
+          fontSize: "1.2em",
+          width: "100%",
+          marginTop: 20
+        }}
+      >
+        Generar PDF
+      </button>
     </div>
   );
 }
