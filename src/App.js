@@ -2,114 +2,95 @@ import React, { useState, useRef } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
 
-// === Helper para redimensionar y comprimir imágenes ===
-function resizeImage(file, maxWidth = 600, quality = 0.7) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth) {
-          height *= maxWidth / width;
-          width = maxWidth;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 function App() {
   const [sede, setSede] = useState("");
   const [tecnico, setTecnico] = useState("");
+  const [responsable, setResponsable] = useState("");  // Nuevo campo
   const [descripcion, setDescripcion] = useState("");
-  const [correoJefe, setCorreoJefe] = useState("");
   const [imagenes, setImagenes] = useState([]);
 
   const firmaTecnicoRef = useRef();
-  const firmaJefeRef = useRef();
+  const firmaResponsableRef = useRef();
 
   const handleImageChange = (e) => {
     setImagenes(Array.from(e.target.files));
   };
 
+  const limpiarFirmaTecnico = () => {
+    firmaTecnicoRef.current.clear();
+  };
+
+  const limpiarFirmaResponsable = () => {
+    firmaResponsableRef.current.clear();
+  };
+
+  const leerImagenComoDataURL = (img) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(img);
+    });
+  };
+
   const generarPDF = async () => {
     const doc = new jsPDF();
-
-    // Fecha automática (DD-MM-YYYY)
     const fechaActual = new Date();
-    const fechaTexto = `${fechaActual.getDate().toString().padStart(2, '0')}-${(fechaActual.getMonth() + 1).toString().padStart(2, '0')}-${fechaActual.getFullYear()}`;
+    const fechaTexto = `${fechaActual.getDate().toString().padStart(2, '0')}-${(fechaActual.getMonth() + 1)
+      .toString()
+      .padStart(2, '0')}-${fechaActual.getFullYear()}`;
 
     // Logo
     const logo = new window.Image();
-    logo.src = process.env.PUBLIC_URL + "/logo.png"; // Cambia a .jpg si tu logo es JPG
+    logo.src = process.env.PUBLIC_URL + "/logo.jpg";
     await Promise.race([
       new Promise((resolve) => {
         logo.onload = () => {
-          doc.addImage(logo, "PNG", 10, 10, 40, 20);
+          doc.addImage(logo, "JPG", 10, 10, 40, 20);
           resolve();
         };
       }),
-      new Promise((resolve) => setTimeout(resolve, 1000)), // máximo 1 seg
+      new Promise((resolve) => setTimeout(resolve, 1000)),
     ]);
 
     doc.setFontSize(16);
     doc.text("MINUTA DE TRABAJO", 70, 20);
-
     doc.setFontSize(10);
     doc.text(`Fecha: ${fechaTexto}`, 150, 20);
 
     doc.setFontSize(12);
     doc.text(`Sede: ${sede}`, 20, 40);
     doc.text(`Técnico: ${tecnico}`, 20, 50);
-    doc.text("Descripción:", 20, 60);
+    doc.text(`Responsable: ${responsable}`, 20, 60);
+    doc.text("Descripción:", 20, 70);
 
     const descripcionLimpia = doc.splitTextToSize(descripcion, 170);
-    doc.text(descripcionLimpia, 20, 70);
+    doc.text(descripcionLimpia, 20, 80);
 
-    // Manejo de imágenes con compresión y salto de página
-    let yOffset = 80 + descripcionLimpia.length * 6;
-    let fotosPorPagina = 3;
-    let fotosEnPagina = 0;
-
-    for (const img of imagenes) {
-      const resizedDataUrl = await resizeImage(img, 600, 0.7);
-      doc.addImage(resizedDataUrl, "JPEG", 20, yOffset, 100, 75);
+    // Imágenes
+    let yOffset = 90 + descripcionLimpia.length * 6;
+    let imgCount = 0;
+    for (let i = 0; i < imagenes.length; i++) {
+      const dataURL = await leerImagenComoDataURL(imagenes[i]);
+      doc.addImage(dataURL, "JPEG", 20, yOffset, 100, 75);
       yOffset += 80;
-      fotosEnPagina += 1;
-      if (fotosEnPagina >= fotosPorPagina) {
+      imgCount++;
+      // Si ya hay 3 imágenes en la página, salto de página
+      if (imgCount % 3 === 0 && i !== imagenes.length - 1) {
         doc.addPage();
         yOffset = 20;
-        fotosEnPagina = 0;
       }
     }
 
     // Firmas
     const firmaTecnico = firmaTecnicoRef.current.getCanvas().toDataURL("image/png");
-    const firmaJefe = firmaJefeRef.current.getCanvas().toDataURL("image/png");
+    const firmaResponsable = firmaResponsableRef.current.getCanvas().toDataURL("image/png");
 
-    doc.text("Firma Técnico:", 20, yOffset);
-    doc.addImage(firmaTecnico, "PNG", 20, yOffset + 5, 50, 20);
-    doc.text("Firma de jefe de tienda o responsable:", 100, yOffset);
-    doc.addImage(firmaJefe, "PNG", 100, yOffset + 5, 50, 20);
+    doc.text("Firma Técnico:", 20, yOffset + 10);
+    doc.addImage(firmaTecnico, "PNG", 20, yOffset + 15, 50, 20);
+    doc.text("Firma Responsable:", 100, yOffset + 10);
+    doc.addImage(firmaResponsable, "PNG", 100, yOffset + 15, 50, 20);
 
     doc.save(`Minuta_${sede}.pdf`);
-
-    // Abrir Gmail con destinatarios ya escritos
-    const para = encodeURIComponent(`made.l@smartjobscl.com${correoJefe ? "," + correoJefe : ""}`);
-    const asunto = encodeURIComponent(`Minuta de trabajo - ${sede}`);
-    const cuerpo = encodeURIComponent(`Sede: ${sede}\nTécnico: ${tecnico}`);
-    const gmailURL = `https://mail.google.com/mail/?view=cm&fs=1&to=${para}&su=${asunto}&body=${cuerpo}`;
-    window.open(gmailURL, "_blank");
   };
 
   return (
@@ -130,18 +111,19 @@ function App() {
           onChange={(e) => setTecnico(e.target.value)}
           required
         />
+        <input
+          type="text"
+          placeholder="Responsable o jefe de tienda"
+          value={responsable}
+          onChange={(e) => setResponsable(e.target.value)}
+          required
+        />
         <textarea
           placeholder="Descripción del trabajo"
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
           rows={4}
           required
-        />
-        <input
-          type="email"
-          placeholder="Correo de jefe de tienda (opcional)"
-          value={correoJefe}
-          onChange={(e) => setCorreoJefe(e.target.value)}
         />
         <label><strong>Subir fotografías</strong></label>
         <input
@@ -164,11 +146,13 @@ function App() {
                 style: { border: "1px solid #000" },
               }}
             />
+            <button onClick={limpiarFirmaTecnico} style={{ marginTop: 4 }}>Limpiar Firma Técnico</button>
           </div>
+
           <div>
-            <p><strong>Firma de jefe de tienda o responsable:</strong></p>
+            <p><strong>Firma Responsable:</strong></p>
             <SignatureCanvas
-              ref={firmaJefeRef}
+              ref={firmaResponsableRef}
               penColor="black"
               canvasProps={{
                 width: 250,
@@ -177,6 +161,7 @@ function App() {
                 style: { border: "1px solid #000" },
               }}
             />
+            <button onClick={limpiarFirmaResponsable} style={{ marginTop: 4 }}>Limpiar Firma Responsable</button>
           </div>
         </div>
 
@@ -191,7 +176,7 @@ function App() {
             marginTop: 20,
           }}
         >
-          Generar PDF y Abrir Gmail
+          Generar PDF
         </button>
       </div>
     </div>
@@ -199,4 +184,3 @@ function App() {
 }
 
 export default App;
-
