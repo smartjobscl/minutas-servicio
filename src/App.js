@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
 
-// === Helper para achicar imágenes ===
+// === Helper para redimensionar y comprimir imágenes ===
 function resizeImage(file, maxWidth = 600, quality = 0.7) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -36,7 +36,7 @@ function App() {
   const [imagenes, setImagenes] = useState([]);
 
   const firmaTecnicoRef = useRef();
-  const firmaClienteRef = useRef();
+  const firmaJefeRef = useRef();
 
   const handleImageChange = (e) => {
     setImagenes(Array.from(e.target.files));
@@ -45,17 +45,17 @@ function App() {
   const generarPDF = async () => {
     const doc = new jsPDF();
 
-    // Fecha automática
+    // Fecha automática (DD-MM-YYYY)
     const fechaActual = new Date();
     const fechaTexto = `${fechaActual.getDate().toString().padStart(2, '0')}-${(fechaActual.getMonth() + 1).toString().padStart(2, '0')}-${fechaActual.getFullYear()}`;
 
-    // Logo (si tienes uno)
+    // Logo
     const logo = new window.Image();
-    logo.src = process.env.PUBLIC_URL + "/logo.jpg"; // Cambia la ruta si tu logo es PNG
+    logo.src = process.env.PUBLIC_URL + "/logo.png"; // Cambia a .jpg si tu logo es JPG
     await Promise.race([
       new Promise((resolve) => {
         logo.onload = () => {
-          doc.addImage(logo, "jpg", 10, 10, 40, 20);
+          doc.addImage(logo, "PNG", 10, 10, 40, 20);
           resolve();
         };
       }),
@@ -76,9 +76,9 @@ function App() {
     const descripcionLimpia = doc.splitTextToSize(descripcion, 170);
     doc.text(descripcionLimpia, 20, 70);
 
-    // === Aquí empieza el manejo de imágenes ===
+    // Manejo de imágenes con compresión y salto de página
     let yOffset = 80 + descripcionLimpia.length * 6;
-    let fotosPorPagina = 3; // Cambia este número si quieres más o menos por página
+    let fotosPorPagina = 3;
     let fotosEnPagina = 0;
 
     for (const img of imagenes) {
@@ -93,17 +93,18 @@ function App() {
       }
     }
 
+    // Firmas
     const firmaTecnico = firmaTecnicoRef.current.getCanvas().toDataURL("image/png");
-    const firmaCliente = firmaClienteRef.current.getCanvas().toDataURL("image/png");
+    const firmaJefe = firmaJefeRef.current.getCanvas().toDataURL("image/png");
 
     doc.text("Firma Técnico:", 20, yOffset);
     doc.addImage(firmaTecnico, "PNG", 20, yOffset + 5, 50, 20);
     doc.text("Firma de jefe de tienda o responsable:", 100, yOffset);
-    doc.addImage(firmaCliente, "PNG", 100, yOffset + 5, 50, 20);
+    doc.addImage(firmaJefe, "PNG", 100, yOffset + 5, 50, 20);
 
     doc.save(`Minuta_${sede}.pdf`);
 
-    // Abrir Gmail
+    // Abrir Gmail con destinatarios ya escritos
     const para = encodeURIComponent(`made.l@smartjobscl.com${correoJefe ? "," + correoJefe : ""}`);
     const asunto = encodeURIComponent(`Minuta de trabajo - ${sede}`);
     const cuerpo = encodeURIComponent(`Sede: ${sede}\nTécnico: ${tecnico}`);
@@ -164,11 +165,10 @@ function App() {
               }}
             />
           </div>
-
           <div>
             <p><strong>Firma de jefe de tienda o responsable:</strong></p>
             <SignatureCanvas
-              ref={firmaClienteRef}
+              ref={firmaJefeRef}
               penColor="black"
               canvasProps={{
                 width: 250,
