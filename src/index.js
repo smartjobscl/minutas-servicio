@@ -6,12 +6,13 @@ function ErrorBoundary({ children }) {
   const [err, setErr] = React.useState(null);
 
   React.useEffect(() => {
-    const handler = (event) => setErr(event.error || new Error(event.message));
-    window.addEventListener("error", handler);
-    window.addEventListener("unhandledrejection", (e) => setErr(e.reason));
+    const onError = (event) => setErr(event.error || new Error(event.message));
+    const onRejection = (e) => setErr(e.reason);
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
     return () => {
-      window.removeEventListener("error", handler);
-      window.removeEventListener("unhandledrejection", (e) => setErr(e.reason));
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
     };
   }, []);
 
@@ -23,7 +24,7 @@ function ErrorBoundary({ children }) {
         <pre style={{ background: "#f6f8fa", padding: 12, overflow: "auto" }}>
 {String(err?.stack || "")}
         </pre>
-        <p>Revisa la consola del navegador (F12 &gt; Console) para más detalles.</p>
+        <p>Abre la consola del navegador (F12 → Console) para más detalles.</p>
       </div>
     );
   }
@@ -39,3 +40,4 @@ createRoot(container).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
