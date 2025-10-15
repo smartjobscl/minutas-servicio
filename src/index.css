@@ -1,13 +1,53 @@
-body {
+* { box-sizing: border-box; }
+body, html, #root {
+  min-height: 100vh;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  padding: 0;
+  background: #f2f5fa;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #243241;
 }
+.contenedor {
+  max-width: 460px;
+  margin: auto;
+  padding: 1rem;
+  background: #fff;
+  min-height: 100vh;
+  box-shadow: 0 0 15px #0001;
+  display: flex;
+  flex-direction: column;
+}
+h2 {
+  text-align: center;
+  color: #1565c0;
+  margin: 8px 0 12px;
+}
+.formulario { display: flex; flex-direction: column; gap: 12px; }
+input, textarea, button {
+  font-size: 1rem;
+  padding: 0.7em;
+  border-radius: 8px;
+  border: 1px solid #cfd6e4;
+  background: #fff;
+  outline: none;
+}
+input:focus, textarea:focus { border-color: #1565c0; box-shadow: 0 0 0 3px rgba(21,101,192,0.12); }
+textarea { resize: vertical; }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+.galeria { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.galeria-item {
+  display: flex; gap: 10px; align-items: center;
+  background: #fff; border: 1px solid #e3e8f1; border-radius: 8px; padding: 8px;
 }
+.thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid #d7deea; }
+.titulo-foto { flex: 1; }
+
+.firmas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+.firma-box { display: flex; flex-direction: column; gap: 8px; flex: 1 1 220px; min-width: 220px; }
+.sigCanvas { width: 100% !important; height: 110px !important; border: 1px dashed #9fb3d9; border-radius: 8px; background: #f8fbff; }
+
+.btn { cursor: pointer; border: 1px solid #c4d1ea; background: #eef4ff; color: #0f3d8a; transition: 0.15s; }
+.btn:hover { filter: brightness(0.97); }
+.btn.enviar { background: #1565c0; color: #fff; border-color: #1565c0; font-weight: 600; }
+.btn.enviar:hover { filter: brightness(0.94); }
+.btn.limpiar { background: #fff7f7; color: #a12a2a; border-color: #f1c9c9; }
