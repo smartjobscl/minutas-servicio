@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
+import "./App.css"; // ¡IMPORTANTE!
 
 function App() {
   const [sede, setSede] = useState("");
@@ -21,7 +22,7 @@ function App() {
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
-    // libera previas anteriores
+    // liberar previews anteriores
     imagenes.forEach((img) => img.preview && URL.revokeObjectURL(img.preview));
     const mapped = files.map((f) => ({
       file: f,
@@ -51,7 +52,7 @@ function App() {
     });
 
   const generarPDF = async () => {
-    const doc = new jsPDF({ unit: "mm", format: "a4" }); // A4
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const marginX = 15;
@@ -62,7 +63,7 @@ function App() {
       fechaActual.getMonth() + 1
     ).padStart(2, "0")}-${fechaActual.getFullYear()}`;
 
-    // Encabezado
+    // Header
     doc.setFontSize(16);
     doc.text("MINUTA DE TRABAJO", pageW / 2, 20, { align: "center" });
     doc.setFontSize(11);
@@ -95,16 +96,16 @@ function App() {
     doc.roundedRect(marginX, y, pageW - marginX * 2, obsBoxHeight, 2, 2);
     doc.text(obsLines, marginX + 2, y + 6);
 
-    // --- FOTOS: 3 slots por página, todas del mismo tamaño, centradas ---
+    // Fotos (3 por página, 1/3 cada una, centradas)
     const slotsPerPage = 3;
-    const slotHeight = (pageH - marginY * 2) / slotsPerPage; // 1/3 de página
+    const slotHeight = (pageH - marginY * 2) / slotsPerPage;
     const titleHeight = 6;
     const imagePadding = 4;
     const imageHeight = slotHeight - titleHeight - imagePadding * 2;
-    const imageWidth = Math.min(pageW * 0.72, pageW - marginX * 2); // ancho uniforme
+    const imageWidth = Math.min(pageW * 0.72, pageW - marginX * 2);
 
     if (imagenes.length > 0) {
-      doc.addPage(); // empezamos las fotos en una página nueva limpia
+      doc.addPage(); // empezar fotos en página nueva
     }
 
     for (let i = 0; i < imagenes.length; i++) {
@@ -132,12 +133,11 @@ function App() {
       doc.rect(imgX, imgY, imageWidth, imageHeight);
     }
 
-    // --- Firmas (lado a lado) ---
+    // Firmas
     const finalPageH = doc.internal.pageSize.getHeight();
     let fy = finalPageH - 70;
 
     if (imagenes.length === 0) {
-      // seguimos en la primera página; si no cabe, nueva
       if (y > finalPageH - 90) {
         doc.addPage();
         fy = marginY + 10;
@@ -165,183 +165,120 @@ function App() {
     doc.save(`Minuta_${sede || "sede"}.pdf`);
   };
 
-  // ===== Estilos UI =====
-  const estiloContenedor = {
-    maxWidth: 420,
-    margin: "auto",
-    padding: 12,
-    fontFamily: "Arial",
-    fontSize: "1.1em",
-    background: "#f7f7f7",
-    borderRadius: 12,
-  };
-
-  const estiloInput = {
-    fontSize: "1em",
-    padding: 8,
-    marginBottom: 10,
-    width: "100%",
-    boxSizing: "border-box",
-    borderRadius: 6,
-    border: "1px solid #ccc",
-  };
-
-  const estiloFirma = {
-    marginBottom: 16,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  };
-
-  const estiloThumbGrid = {
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: 10,
-    marginTop: 6,
-  };
-
-  const estiloThumbItem = {
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-    background: "#fff",
-    border: "1px solid #ddd",
-    borderRadius: 8,
-    padding: 8,
-  };
-
-  const estiloThumbImg = {
-    width: 72,
-    height: 72,
-    objectFit: "cover",
-    borderRadius: 6,
-    border: "1px solid #ccc",
-  };
-
   return (
-    <div style={estiloContenedor}>
-      <h2 style={{ textAlign: "center", fontSize: "1.6em", marginBottom: 8 }}>Minuta de Trabajo</h2>
+    <div className="contenedor">
+      <h2>Minuta de Trabajo</h2>
 
-      <input
-        style={estiloInput}
-        type="text"
-        placeholder="Sede"
-        value={sede}
-        onChange={(e) => setSede(e.target.value)}
-        required
-      />
-      <input
-        style={estiloInput}
-        type="text"
-        placeholder="Técnico"
-        value={tecnico}
-        onChange={(e) => setTecnico(e.target.value)}
-        required
-      />
-      <input
-        style={estiloInput}
-        type="text"
-        placeholder="Responsable o jefe de tienda"
-        value={responsable}
-        onChange={(e) => setResponsable(e.target.value)}
-        required
-      />
+      <div className="formulario">
+        <input
+          type="text"
+          placeholder="Sede"
+          value={sede}
+          onChange={(e) => setSede(e.target.value)}
+          required
+        />
+        <input
+          type="text"
+          placeholder="Técnico"
+          value={tecnico}
+          onChange={(e) => setTecnico(e.target.value)}
+          required
+        />
+        <input
+          type="text"
+          placeholder="Responsable o jefe de tienda"
+          value={responsable}
+          onChange={(e) => setResponsable(e.target.value)}
+          required
+        />
 
-      <textarea
-        style={estiloInput}
-        placeholder="Descripción del trabajo"
-        value={descripcion}
-        onChange={(e) => setDescripcion(e.target.value)}
-        rows={4}
-        required
-      />
+        <textarea
+          placeholder="Descripción del trabajo"
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          rows={4}
+          required
+        />
 
-      <textarea
-        style={estiloInput}
-        placeholder="Observaciones importantes (ej.: riesgos, pendientes, repuestos, notas internas)"
-        value={observaciones}
-        onChange={(e) => setObservaciones(e.target.value)}
-        rows={4}
-      />
+        <textarea
+          placeholder="Observaciones importantes (riesgos, pendientes, repuestos, notas internas)"
+          value={observaciones}
+          onChange={(e) => setObservaciones(e.target.value)}
+          rows={4}
+        />
 
-      <label style={{ marginBottom: 5 }}><strong>Subir fotografías</strong></label>
-      <input
-        style={{ ...estiloInput, fontSize: "1em", padding: 4 }}
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={handleImageChange}
-      />
+        <label><strong>Subir fotografías</strong></label>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleImageChange}
+        />
 
-      {imagenes.length > 0 && (
-        <div style={estiloThumbGrid}>
-          {imagenes.map((img, idx) => (
-            <div key={idx} style={estiloThumbItem}>
-              <img src={img.preview} alt={`img-${idx}`} style={estiloThumbImg} />
-              <input
-                type="text"
-                style={{ ...estiloInput, marginBottom: 0 }}
-                placeholder="Título de la foto (se mostrará en el PDF)"
-                value={img.title}
-                onChange={(e) => updateImageTitle(idx, e.target.value)}
-              />
-            </div>
-          ))}
+        {/* Miniaturas + títulos */}
+        {imagenes.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+            {imagenes.map((img, idx) => (
+              <div key={idx} style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                background: "#fff",
+                border: "1px solid #ddd",
+                borderRadius: 8,
+                padding: 8
+              }}>
+                <img
+                  src={img.preview}
+                  alt={`img-${idx}`}
+                  style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: "1px solid #ccc" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Título de la foto (aparece en el PDF)"
+                  value={img.title}
+                  onChange={(e) => updateImageTitle(idx, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Firmas */}
+        <div className="firmas">
+          <div>
+            <p><strong>Firma Técnico</strong></p>
+            <SignatureCanvas
+              ref={firmaTecnicoRef}
+              penColor="black"
+              canvasProps={{
+                width: 320,
+                height: 100,
+                className: "sigCanvas"
+              }}
+            />
+            <button className="limpiar" onClick={limpiarFirmaTecnico}>Limpiar Firma Técnico</button>
+          </div>
+
+          <div>
+            <p><strong>Firma Responsable</strong></p>
+            <SignatureCanvas
+              ref={firmaResponsableRef}
+              penColor="black"
+              canvasProps={{
+                width: 320,
+                height: 100,
+                className: "sigCanvas"
+              }}
+            />
+            <button className="limpiar" onClick={limpiarFirmaResponsable}>Limpiar Firma Responsable</button>
+          </div>
         </div>
-      )}
 
-      <div style={{ ...estiloFirma, marginTop: 12 }}>
-        <p><strong>Firma Técnico:</strong></p>
-        <SignatureCanvas
-          ref={firmaTecnicoRef}
-          penColor="black"
-          canvasProps={{
-            width: 320,
-            height: 100,
-            className: "sigCanvas",
-            style: { border: "2px solid #000", borderRadius: 8 },
-          }}
-        />
-        <button onClick={limpiarFirmaTecnico} style={{ marginTop: 8, fontSize: "1em", width: 220 }}>
-          Limpiar Firma Técnico
-        </button>
+        <button className="enviar" onClick={generarPDF}>Generar PDF</button>
       </div>
-
-      <div style={estiloFirma}>
-        <p><strong>Firma Responsable:</strong></p>
-        <SignatureCanvas
-          ref={firmaResponsableRef}
-          penColor="black"
-          canvasProps={{
-            width: 320,
-            height: 100,
-            className: "sigCanvas",
-            style: { border: "2px solid #000", borderRadius: 8 },
-          }}
-        />
-        <button onClick={limpiarFirmaResponsable} style={{ marginTop: 8, fontSize: "1em", width: 220 }}>
-          Limpiar Firma Responsable
-        </button>
-      </div>
-
-      <button
-        onClick={generarPDF}
-        style={{
-          padding: 14,
-          backgroundColor: "#007bff",
-          color: "white",
-          border: "none",
-          borderRadius: 8,
-          fontSize: "1.1em",
-          width: "100%",
-          marginTop: 12,
-        }}
-      >
-        Generar PDF
-      </button>
     </div>
   );
 }
 
 export default App;
-
