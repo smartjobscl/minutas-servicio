@@ -14,7 +14,6 @@ function App() {
   const firmaTecnicoRef = useRef();
   const firmaResponsableRef = useRef();
 
-  // Limpia los objectURL previos cuando cambian imágenes o al desmontar
   useEffect(() => {
     return () => {
       imagenes.forEach((img) => img.preview && URL.revokeObjectURL(img.preview));
@@ -23,9 +22,7 @@ function App() {
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
-    // liberar previews anteriores
     imagenes.forEach((img) => img.preview && URL.revokeObjectURL(img.preview));
-
     const mapped = files.map((f) => ({
       file: f,
       title: "",
@@ -56,8 +53,7 @@ function App() {
   const tipoDesdeDataURL = (dataURL) => {
     const match = /^data:image\/(png|jpeg|jpg)/i.exec(dataURL || "");
     if (!match) return "JPEG";
-    const t = match[1].toLowerCase();
-    return t === "png" ? "PNG" : "JPEG";
+    return match[1].toLowerCase() === "png" ? "PNG" : "JPEG";
   };
 
   const generarPDF = async () => {
@@ -72,7 +68,7 @@ function App() {
       fechaActual.getMonth() + 1
     ).padStart(2, "0")}-${fechaActual.getFullYear()}`;
 
-    // ===== Header (sin logo) =====
+    // Header (sin logo)
     doc.setFontSize(16);
     doc.setFont(undefined, "bold");
     doc.text("MINUTA DE TRABAJO", pageW / 2, 20, { align: "center" });
@@ -80,14 +76,14 @@ function App() {
     doc.setFontSize(11);
     doc.text(`Fecha: ${fechaTexto}`, pageW - marginX, 20, { align: "right" });
 
-    // ===== Datos principales =====
-    let y = 35 + 6;
+    // Datos
+    let y = 41;
     doc.setFontSize(12);
     doc.text(`Sede: ${sede || "-"}`, marginX, y); y += 7;
     doc.text(`Técnico: ${tecnico || "-"}`, marginX, y); y += 7;
     doc.text(`Responsable (Receptor): ${responsable || "-"}`, marginX, y); y += 10;
 
-    // ===== Descripción =====
+    // Descripción
     doc.setFont(undefined, "bold");
     doc.text("Descripción:", marginX, y);
     doc.setFont(undefined, "normal");
@@ -96,7 +92,7 @@ function App() {
     doc.text(descLines, marginX, y);
     y += descLines.length * 6 + 6;
 
-    // ===== Observaciones (en recuadro) =====
+    // Observaciones (recuadro)
     doc.setFont(undefined, "bold");
     doc.text("Observaciones importantes:", marginX, y);
     doc.setFont(undefined, "normal");
@@ -108,14 +104,14 @@ function App() {
     doc.text(obsLines, marginX + 2, y + 6);
     y += obsBoxHeight + 6;
 
-    // Si no hay espacio para firmas en esta página y tampoco hay fotos, abre nueva
+    // ¿Hay espacio para firmas?
     const espacioFirmasNecesario = 70;
     let requiereNuevaParaFirmas = y > (pageH - espacioFirmasNecesario - marginY);
 
-    // ===== Fotos (3 por página, centradas) =====
+    // Fotos (3 por página)
     const hayImagenes = imagenes.length > 0;
     if (hayImagenes) {
-      doc.addPage(); // empezar fotos en página nueva
+      doc.addPage();
       const slotsPerPage = 3;
       const slotHeight = (pageH - marginY * 2) / slotsPerPage;
       const titleHeight = 6;
@@ -125,9 +121,7 @@ function App() {
 
       for (let i = 0; i < imagenes.length; i++) {
         const slotIndex = i % slotsPerPage;
-        if (slotIndex === 0 && i !== 0) {
-          doc.addPage();
-        }
+        if (slotIndex === 0 && i !== 0) doc.addPage();
 
         const topY = marginY + slotIndex * slotHeight;
         const titleY = topY + titleHeight - 1;
@@ -151,19 +145,13 @@ function App() {
       requiereNuevaParaFirmas = false;
     }
 
-    // ===== Firmas (lado a lado) =====
+    // Firmas (lado a lado)
     if (!hayImagenes && requiereNuevaParaFirmas) {
       doc.addPage();
     }
 
     const finalPageH = doc.internal.pageSize.getHeight();
-    let fy;
-
-    if (hayImagenes) {
-      fy = finalPageH - 70;
-    } else {
-      fy = Math.min(y + 10, finalPageH - 70);
-    }
+    let fy = hayImagenes ? finalPageH - 70 : Math.min(y + 10, finalPageH - 70);
 
     const colW = (pageW - marginX * 2 - 20) / 2;
     const leftX = marginX;
@@ -189,8 +177,7 @@ function App() {
     if (firmaTecnico) doc.addImage(firmaTecnico, "PNG", leftX, fy + 3, sigW, sigH);
     if (firmaResponsable) doc.addImage(firmaResponsable, "PNG", rightX, fy + 3, sigW, sigH);
 
-    const nombre = `Minuta_${sede || "sede"}.pdf`;
-    doc.save(nombre);
+    doc.save(`Minuta_${sede || "sede"}.pdf`);
   };
 
   return (
@@ -198,63 +185,23 @@ function App() {
       <h2>Minuta de Trabajo</h2>
 
       <div className="formulario">
-        <input
-          type="text"
-          placeholder="Sede"
-          value={sede}
-          onChange={(e) => setSede(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Técnico"
-          value={tecnico}
-          onChange={(e) => setTecnico(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Responsable o jefe de tienda"
-          value={responsable}
-          onChange={(e) => setResponsable(e.target.value)}
-          required
-        />
+        <input type="text" placeholder="Sede" value={sede} onChange={(e) => setSede(e.target.value)} required />
+        <input type="text" placeholder="Técnico" value={tecnico} onChange={(e) => setTecnico(e.target.value)} required />
+        <input type="text" placeholder="Responsable o jefe de tienda" value={responsable} onChange={(e) => setResponsable(e.target.value)} required />
 
-        <textarea
-          placeholder="Descripción del trabajo"
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-          rows={4}
-          required
-        />
+        <textarea placeholder="Descripción del trabajo" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={4} required />
 
-        <textarea
-          placeholder="Observaciones importantes (riesgos, pendientes, repuestos, notas internas)"
-          value={observaciones}
-          onChange={(e) => setObservaciones(e.target.value)}
-          rows={4}
-        />
+        <textarea placeholder="Observaciones importantes (riesgos, pendientes, repuestos, notas internas)" value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={4} />
 
         <label><strong>Subir fotografías</strong></label>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleImageChange}
-        />
+        <input type="file" accept="image/*" multiple onChange={handleImageChange} />
 
         {imagenes.length > 0 && (
           <div className="galeria">
             {imagenes.map((img, idx) => (
               <div key={idx} className="galeria-item">
                 <img src={img.preview} alt={`img-${idx}`} className="thumb" />
-                <input
-                  type="text"
-                  className="titulo-foto"
-                  placeholder="Título de la foto (aparece en el PDF)"
-                  value={img.title}
-                  onChange={(e) => updateImageTitle(idx, e.target.value)}
-                />
+                <input type="text" className="titulo-foto" placeholder="Título de la foto (aparece en el PDF)" value={img.title} onChange={(e) => updateImageTitle(idx, e.target.value)} />
               </div>
             ))}
           </div>
@@ -263,32 +210,18 @@ function App() {
         <div className="firmas">
           <div className="firma-box">
             <p><strong>Firma Técnico</strong></p>
-            <SignatureCanvas
-              ref={firmaTecnicoRef}
-              penColor="black"
-              canvasProps={{ width: 320, height: 100, className: "sigCanvas" }}
-            />
-            <button className="btn limpiar" onClick={limpiarFirmaTecnico}>
-              Limpiar Firma Técnico
-            </button>
+            <SignatureCanvas ref={firmaTecnicoRef} penColor="black" canvasProps={{ width: 320, height: 100, className: "sigCanvas" }} />
+            <button className="btn limpiar" onClick={limpiarFirmaTecnico}>Limpiar Firma Técnico</button>
           </div>
 
           <div className="firma-box">
             <p><strong>Firma Receptor</strong></p>
-            <SignatureCanvas
-              ref={firmaResponsableRef}
-              penColor="black"
-              canvasProps={{ width: 320, height: 100, className: "sigCanvas" }}
-            />
-            <button className="btn limpiar" onClick={limpiarFirmaResponsable}>
-              Limpiar Firma Receptor
-            </button>
+            <SignatureCanvas ref={firmaResponsableRef} penColor="black" canvasProps={{ width: 320, height: 100, className: "sigCanvas" }} />
+            <button className="btn limpiar" onClick={limpiarFirmaResponsable}>Limpiar Firma Receptor</button>
           </div>
         </div>
 
-        <button className="btn enviar" onClick={generarPDF}>
-          Generar PDF
-        </button>
+        <button className="btn enviar" onClick={generarPDF}>Generar PDF</button>
       </div>
     </div>
   );
