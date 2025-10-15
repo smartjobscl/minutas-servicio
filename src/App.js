@@ -8,27 +8,26 @@ function App() {
   const [responsable, setResponsable] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [observaciones, setObservaciones] = useState("");
-  const [imagenes, setImagenes] = useState([]); // [{file, title, preview}...]
+  const [imagenes, setImagenes] = useState([]); // [{file, title, preview}]
 
   const firmaTecnicoRef = useRef();
   const firmaResponsableRef = useRef();
 
-  // Limpia previews al desmontar
   useEffect(() => {
     return () => {
-      imagenes.forEach(img => img.preview && URL.revokeObjectURL(img.preview));
+      imagenes.forEach((img) => img.preview && URL.revokeObjectURL(img.preview));
     };
   }, [imagenes]);
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
+    // libera previas anteriores
+    imagenes.forEach((img) => img.preview && URL.revokeObjectURL(img.preview));
     const mapped = files.map((f) => ({
       file: f,
       title: "",
       preview: URL.createObjectURL(f),
     }));
-    // Si vuelven a subir, liberar previews anteriores
-    imagenes.forEach(img => img.preview && URL.revokeObjectURL(img.preview));
     setImagenes(mapped);
   };
 
@@ -59,17 +58,17 @@ function App() {
     const marginY = 15;
 
     const fechaActual = new Date();
-    const fechaTexto = `${fechaActual.getDate().toString().padStart(2, "0")}-${(fechaActual.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}-${fechaActual.getFullYear()}`;
+    const fechaTexto = `${String(fechaActual.getDate()).padStart(2, "0")}-${String(
+      fechaActual.getMonth() + 1
+    ).padStart(2, "0")}-${fechaActual.getFullYear()}`;
 
-    // Header
+    // Encabezado
     doc.setFontSize(16);
     doc.text("MINUTA DE TRABAJO", pageW / 2, 20, { align: "center" });
     doc.setFontSize(11);
     doc.text(`Fecha: ${fechaTexto}`, pageW - marginX, 20, { align: "right" });
 
-    // Datos básicos
+    // Datos
     let y = 35;
     doc.setFontSize(12);
     doc.text(`Sede: ${sede || "-"}`, marginX, y); y += 7;
@@ -95,29 +94,25 @@ function App() {
     const obsBoxHeight = Math.max(24, obsLines.length * 6 + 6);
     doc.roundedRect(marginX, y, pageW - marginX * 2, obsBoxHeight, 2, 2);
     doc.text(obsLines, marginX + 2, y + 6);
-    y += obsBoxHeight + 10;
 
-    // ---- FOTOS: 3 por página, cada una ocupa 1/3 de la altura ----
-    // Secciones verticales iguales
+    // --- FOTOS: 3 slots por página, todas del mismo tamaño, centradas ---
     const slotsPerPage = 3;
-    const slotHeight = (pageH - marginY * 2) / slotsPerPage; // altura por slot (≈ 1/3 de página)
-    const titleHeight = 6; // alto reservado para título
+    const slotHeight = (pageH - marginY * 2) / slotsPerPage; // 1/3 de página
+    const titleHeight = 6;
     const imagePadding = 4;
     const imageHeight = slotHeight - titleHeight - imagePadding * 2;
-    const imageWidth = Math.min(pageW * 0.72, pageW - marginX * 2); // centrado, ancho uniforme
+    const imageWidth = Math.min(pageW * 0.72, pageW - marginX * 2); // ancho uniforme
 
-    // Empezamos una nueva página si no cabe el primer bloque de imágenes
     if (imagenes.length > 0) {
-      doc.addPage();
+      doc.addPage(); // empezamos las fotos en una página nueva limpia
     }
-
-    imagenes.length === 0 && (y = y); // no-op para claridad
 
     for (let i = 0; i < imagenes.length; i++) {
       const slotIndex = i % slotsPerPage;
       if (slotIndex === 0 && i !== 0) {
         doc.addPage();
       }
+
       const topY = marginY + slotIndex * slotHeight;
       const titleY = topY + titleHeight - 1;
       const imgY = topY + titleHeight + imagePadding;
@@ -125,28 +120,24 @@ function App() {
       const centerX = pageW / 2;
       const imgX = centerX - imageWidth / 2;
 
-      // Título centrado
       const title = (imagenes[i].title || "").trim() || "(sin título)";
       doc.setFontSize(12);
       doc.setFont(undefined, "bold");
       doc.text(title, centerX, titleY, { align: "center" });
       doc.setFont(undefined, "normal");
 
-      // Imagen del mismo tamaño para todas
       const dataURL = await leerImagenComoDataURL(imagenes[i].file);
-      // Fuerza tamaño uniforme (ancho y alto fijos)
       doc.addImage(dataURL, "JPEG", imgX, imgY, imageWidth, imageHeight);
-      // Marco fino opcional para uniformidad visual
       doc.setLineWidth(0.2);
       doc.rect(imgX, imgY, imageWidth, imageHeight);
     }
 
-    // ---- Firmas (lado a lado) ----
-    // Colocarlas al final de la última página
+    // --- Firmas (lado a lado) ---
     const finalPageH = doc.internal.pageSize.getHeight();
-    let fy = finalPageH - 70; // altura base para firmas
-    // Si hubo cero imágenes, seguimos en la primera página y usamos 'y'
+    let fy = finalPageH - 70;
+
     if (imagenes.length === 0) {
+      // seguimos en la primera página; si no cabe, nueva
       if (y > finalPageH - 90) {
         doc.addPage();
         fy = marginY + 10;
@@ -174,7 +165,7 @@ function App() {
     doc.save(`Minuta_${sede || "sede"}.pdf`);
   };
 
-  // ==== ESTILOS UI ====
+  // ===== Estilos UI =====
   const estiloContenedor = {
     maxWidth: 420,
     margin: "auto",
@@ -282,7 +273,6 @@ function App() {
         onChange={handleImageChange}
       />
 
-      {/* Vista previa + títulos */}
       {imagenes.length > 0 && (
         <div style={estiloThumbGrid}>
           {imagenes.map((img, idx) => (
@@ -300,7 +290,6 @@ function App() {
         </div>
       )}
 
-      {/* FIRMAS */}
       <div style={{ ...estiloFirma, marginTop: 12 }}>
         <p><strong>Firma Técnico:</strong></p>
         <SignatureCanvas
