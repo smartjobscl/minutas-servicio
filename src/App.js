@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
-import logo from "./logo.png"; // Asegúrate de que exista en src/
 import "./App.css";
 
 function App() {
@@ -54,21 +53,8 @@ function App() {
       reader.readAsDataURL(file);
     });
 
-  // Convierte un src (import/URL) a dataURL para jsPDF (logo)
-  const cargarImagenComoDataURL = async (src) => {
-    const resp = await fetch(src);
-    const blob = await resp.blob();
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
-
   const tipoDesdeDataURL = (dataURL) => {
-    // data:image/png;base64,xxxx -> devuelve 'PNG' | 'JPEG'
-    const match = /^data:image\/(png|jpeg|jpg)/i.exec(dataURL);
+    const match = /^data:image\/(png|jpeg|jpg)/i.exec(dataURL || "");
     if (!match) return "JPEG";
     const t = match[1].toLowerCase();
     return t === "png" ? "PNG" : "JPEG";
@@ -86,17 +72,7 @@ function App() {
       fechaActual.getMonth() + 1
     ).padStart(2, "0")}-${fechaActual.getFullYear()}`;
 
-    // ===== Header con LOGO =====
-    try {
-      const logoDataURL = await cargarImagenComoDataURL(logo);
-      const logoW = 28; // ancho en mm
-      const logoH = 28; // alto en mm (ajustable)
-      doc.addImage(logoDataURL, tipoDesdeDataURL(logoDataURL), marginX, 10, logoW, logoH);
-    } catch (e) {
-      // Si falla, continúa sin logo
-      console.warn("No se pudo cargar logo.png:", e);
-    }
-
+    // ===== Header (sin logo) =====
     doc.setFontSize(16);
     doc.setFont(undefined, "bold");
     doc.text("MINUTA DE TRABAJO", pageW / 2, 20, { align: "center" });
@@ -105,7 +81,7 @@ function App() {
     doc.text(`Fecha: ${fechaTexto}`, pageW - marginX, 20, { align: "right" });
 
     // ===== Datos principales =====
-    let y = 35 + 6; // un poco más abajo para no chocar con el logo
+    let y = 35 + 6;
     doc.setFontSize(12);
     doc.text(`Sede: ${sede || "-"}`, marginX, y); y += 7;
     doc.text(`Técnico: ${tecnico || "-"}`, marginX, y); y += 7;
@@ -140,7 +116,6 @@ function App() {
     const hayImagenes = imagenes.length > 0;
     if (hayImagenes) {
       doc.addPage(); // empezar fotos en página nueva
-      // Config layout
       const slotsPerPage = 3;
       const slotHeight = (pageH - marginY * 2) / slotsPerPage;
       const titleHeight = 6;
@@ -173,7 +148,6 @@ function App() {
         doc.setLineWidth(0.2);
         doc.rect(imgX, imgY, imageMaxWidth, imageHeight);
       }
-      // Después de fotos, firmas van al final de la última página de fotos
       requiereNuevaParaFirmas = false;
     }
 
@@ -182,15 +156,12 @@ function App() {
       doc.addPage();
     }
 
-    // Recalcular alto de página actual (por si cambió de página)
     const finalPageH = doc.internal.pageSize.getHeight();
     let fy;
 
     if (hayImagenes) {
-      // Ubicar firmas en margen inferior de la última página
       fy = finalPageH - 70;
     } else {
-      // Si hay espacio suficiente en la página actual, usalo; si no, ya abrimos nueva
       fy = Math.min(y + 10, finalPageH - 70);
     }
 
@@ -218,7 +189,6 @@ function App() {
     if (firmaTecnico) doc.addImage(firmaTecnico, "PNG", leftX, fy + 3, sigW, sigH);
     if (firmaResponsable) doc.addImage(firmaResponsable, "PNG", rightX, fy + 3, sigW, sigH);
 
-    // ===== Guardar =====
     const nombre = `Minuta_${sede || "sede"}.pdf`;
     doc.save(nombre);
   };
@@ -273,16 +243,11 @@ function App() {
           onChange={handleImageChange}
         />
 
-        {/* Miniaturas + títulos */}
         {imagenes.length > 0 && (
           <div className="galeria">
             {imagenes.map((img, idx) => (
               <div key={idx} className="galeria-item">
-                <img
-                  src={img.preview}
-                  alt={`img-${idx}`}
-                  className="thumb"
-                />
+                <img src={img.preview} alt={`img-${idx}`} className="thumb" />
                 <input
                   type="text"
                   className="titulo-foto"
@@ -295,18 +260,13 @@ function App() {
           </div>
         )}
 
-        {/* Firmas */}
         <div className="firmas">
           <div className="firma-box">
             <p><strong>Firma Técnico</strong></p>
             <SignatureCanvas
               ref={firmaTecnicoRef}
               penColor="black"
-              canvasProps={{
-                width: 320,
-                height: 100,
-                className: "sigCanvas"
-              }}
+              canvasProps={{ width: 320, height: 100, className: "sigCanvas" }}
             />
             <button className="btn limpiar" onClick={limpiarFirmaTecnico}>
               Limpiar Firma Técnico
@@ -318,11 +278,7 @@ function App() {
             <SignatureCanvas
               ref={firmaResponsableRef}
               penColor="black"
-              canvasProps={{
-                width: 320,
-                height: 100,
-                className: "sigCanvas"
-              }}
+              canvasProps={{ width: 320, height: 100, className: "sigCanvas" }}
             />
             <button className="btn limpiar" onClick={limpiarFirmaResponsable}>
               Limpiar Firma Receptor
