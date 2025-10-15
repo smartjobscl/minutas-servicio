@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
-import "./App.css"; // ¡IMPORTANTE!
+import logo from "./logo.png"; // Asegúrate de que exista en src/
+import "./App.css";
 
 function App() {
   const [sede, setSede] = useState("");
@@ -14,6 +15,7 @@ function App() {
   const firmaTecnicoRef = useRef();
   const firmaResponsableRef = useRef();
 
+  // Limpia los objectURL previos cuando cambian imágenes o al desmontar
   useEffect(() => {
     return () => {
       imagenes.forEach((img) => img.preview && URL.revokeObjectURL(img.preview));
@@ -24,6 +26,7 @@ function App() {
     const files = Array.from(e.target.files || []);
     // liberar previews anteriores
     imagenes.forEach((img) => img.preview && URL.revokeObjectURL(img.preview));
+
     const mapped = files.map((f) => ({
       file: f,
       title: "",
@@ -43,13 +46,33 @@ function App() {
   const limpiarFirmaTecnico = () => firmaTecnicoRef.current?.clear();
   const limpiarFirmaResponsable = () => firmaResponsableRef.current?.clear();
 
-  const leerImagenComoDataURL = (file) =>
+  const leerArchivoComoDataURL = (file) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target.result);
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+
+  // Convierte un src (import/URL) a dataURL para jsPDF (logo)
+  const cargarImagenComoDataURL = async (src) => {
+    const resp = await fetch(src);
+    const blob = await resp.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const tipoDesdeDataURL = (dataURL) => {
+    // data:image/png;base64,xxxx -> devuelve 'PNG' | 'JPEG'
+    const match = /^data:image\/(png|jpeg|jpg)/i.exec(dataURL);
+    if (!match) return "JPEG";
+    const t = match[1].toLowerCase();
+    return t === "png" ? "PNG" : "JPEG";
+  };
 
   const generarPDF = async () => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -63,20 +86,32 @@ function App() {
       fechaActual.getMonth() + 1
     ).padStart(2, "0")}-${fechaActual.getFullYear()}`;
 
-    // Header
+    // ===== Header con LOGO =====
+    try {
+      const logoDataURL = await cargarImagenComoDataURL(logo);
+      const logoW = 28; // ancho en mm
+      const logoH = 28; // alto en mm (ajustable)
+      doc.addImage(logoDataURL, tipoDesdeDataURL(logoDataURL), marginX, 10, logoW, logoH);
+    } catch (e) {
+      // Si falla, continúa sin logo
+      console.warn("No se pudo cargar logo.png:", e);
+    }
+
     doc.setFontSize(16);
+    doc.setFont(undefined, "bold");
     doc.text("MINUTA DE TRABAJO", pageW / 2, 20, { align: "center" });
+    doc.setFont(undefined, "normal");
     doc.setFontSize(11);
     doc.text(`Fecha: ${fechaTexto}`, pageW - marginX, 20, { align: "right" });
 
-    // Datos
-    let y = 35;
+    // ===== Datos principales =====
+    let y = 35 + 6; // un poco más abajo para no chocar con el logo
     doc.setFontSize(12);
     doc.text(`Sede: ${sede || "-"}`, marginX, y); y += 7;
     doc.text(`Técnico: ${tecnico || "-"}`, marginX, y); y += 7;
-    doc.text(`Responsable: ${responsable || "-"}`, marginX, y); y += 10;
+    doc.text(`Responsable (Receptor): ${responsable || "-"}`, marginX, y); y += 10;
 
-    // Descripción
+    // ===== Descripción =====
     doc.setFont(undefined, "bold");
     doc.text("Descripción:", marginX, y);
     doc.setFont(undefined, "normal");
@@ -85,7 +120,7 @@ function App() {
     doc.text(descLines, marginX, y);
     y += descLines.length * 6 + 6;
 
-    // Observaciones importantes (recuadro)
+    // ===== Observaciones (en recuadro) =====
     doc.setFont(undefined, "bold");
     doc.text("Observaciones importantes:", marginX, y);
     doc.setFont(undefined, "normal");
@@ -95,55 +130,68 @@ function App() {
     const obsBoxHeight = Math.max(24, obsLines.length * 6 + 6);
     doc.roundedRect(marginX, y, pageW - marginX * 2, obsBoxHeight, 2, 2);
     doc.text(obsLines, marginX + 2, y + 6);
+    y += obsBoxHeight + 6;
 
-    // Fotos (3 por página, 1/3 cada una, centradas)
-    const slotsPerPage = 3;
-    const slotHeight = (pageH - marginY * 2) / slotsPerPage;
-    const titleHeight = 6;
-    const imagePadding = 4;
-    const imageHeight = slotHeight - titleHeight - imagePadding * 2;
-    const imageWidth = Math.min(pageW * 0.72, pageW - marginX * 2);
+    // Si no hay espacio para firmas en esta página y tampoco hay fotos, abre nueva
+    const espacioFirmasNecesario = 70;
+    let requiereNuevaParaFirmas = y > (pageH - espacioFirmasNecesario - marginY);
 
-    if (imagenes.length > 0) {
+    // ===== Fotos (3 por página, centradas) =====
+    const hayImagenes = imagenes.length > 0;
+    if (hayImagenes) {
       doc.addPage(); // empezar fotos en página nueva
-    }
+      // Config layout
+      const slotsPerPage = 3;
+      const slotHeight = (pageH - marginY * 2) / slotsPerPage;
+      const titleHeight = 6;
+      const imagePadding = 4;
+      const imageHeight = slotHeight - titleHeight - imagePadding * 2;
+      const imageMaxWidth = Math.min(pageW * 0.72, pageW - marginX * 2);
 
-    for (let i = 0; i < imagenes.length; i++) {
-      const slotIndex = i % slotsPerPage;
-      if (slotIndex === 0 && i !== 0) {
-        doc.addPage();
+      for (let i = 0; i < imagenes.length; i++) {
+        const slotIndex = i % slotsPerPage;
+        if (slotIndex === 0 && i !== 0) {
+          doc.addPage();
+        }
+
+        const topY = marginY + slotIndex * slotHeight;
+        const titleY = topY + titleHeight - 1;
+        const imgY = topY + titleHeight + imagePadding;
+
+        const centerX = pageW / 2;
+        const imgX = centerX - imageMaxWidth / 2;
+
+        const title = (imagenes[i].title || "").trim() || "(sin título)";
+        doc.setFontSize(12);
+        doc.setFont(undefined, "bold");
+        doc.text(title, centerX, titleY, { align: "center" });
+        doc.setFont(undefined, "normal");
+
+        const dataURL = await leerArchivoComoDataURL(imagenes[i].file);
+        const tipo = tipoDesdeDataURL(dataURL);
+        doc.addImage(dataURL, tipo, imgX, imgY, imageMaxWidth, imageHeight);
+        doc.setLineWidth(0.2);
+        doc.rect(imgX, imgY, imageMaxWidth, imageHeight);
       }
-
-      const topY = marginY + slotIndex * slotHeight;
-      const titleY = topY + titleHeight - 1;
-      const imgY = topY + titleHeight + imagePadding;
-
-      const centerX = pageW / 2;
-      const imgX = centerX - imageWidth / 2;
-
-      const title = (imagenes[i].title || "").trim() || "(sin título)";
-      doc.setFontSize(12);
-      doc.setFont(undefined, "bold");
-      doc.text(title, centerX, titleY, { align: "center" });
-      doc.setFont(undefined, "normal");
-
-      const dataURL = await leerImagenComoDataURL(imagenes[i].file);
-      doc.addImage(dataURL, "JPEG", imgX, imgY, imageWidth, imageHeight);
-      doc.setLineWidth(0.2);
-      doc.rect(imgX, imgY, imageWidth, imageHeight);
+      // Después de fotos, firmas van al final de la última página de fotos
+      requiereNuevaParaFirmas = false;
     }
 
-    // Firmas
+    // ===== Firmas (lado a lado) =====
+    if (!hayImagenes && requiereNuevaParaFirmas) {
+      doc.addPage();
+    }
+
+    // Recalcular alto de página actual (por si cambió de página)
     const finalPageH = doc.internal.pageSize.getHeight();
-    let fy = finalPageH - 70;
+    let fy;
 
-    if (imagenes.length === 0) {
-      if (y > finalPageH - 90) {
-        doc.addPage();
-        fy = marginY + 10;
-      } else {
-        fy = y + 10;
-      }
+    if (hayImagenes) {
+      // Ubicar firmas en margen inferior de la última página
+      fy = finalPageH - 70;
+    } else {
+      // Si hay espacio suficiente en la página actual, usalo; si no, ya abrimos nueva
+      fy = Math.min(y + 10, finalPageH - 70);
     }
 
     const colW = (pageW - marginX * 2 - 20) / 2;
@@ -152,17 +200,27 @@ function App() {
 
     doc.setFontSize(12);
     doc.text("Firma Técnico:", leftX, fy);
-    doc.text("Firma Responsable:", rightX, fy);
+    doc.text("Firma Receptor:", rightX, fy);
 
-    const firmaTecnico = firmaTecnicoRef.current?.getCanvas().toDataURL("image/png");
-    const firmaResponsable = firmaResponsableRef.current?.getCanvas().toDataURL("image/png");
+    const canvasTec = firmaTecnicoRef.current?.getTrimmedCanvas
+      ? firmaTecnicoRef.current.getTrimmedCanvas()
+      : firmaTecnicoRef.current?.getCanvas();
+
+    const canvasResp = firmaResponsableRef.current?.getTrimmedCanvas
+      ? firmaResponsableRef.current.getTrimmedCanvas()
+      : firmaResponsableRef.current?.getCanvas();
+
+    const firmaTecnico = canvasTec ? canvasTec.toDataURL("image/png") : null;
+    const firmaResponsable = canvasResp ? canvasResp.toDataURL("image/png") : null;
 
     const sigH = 25;
     const sigW = 60;
     if (firmaTecnico) doc.addImage(firmaTecnico, "PNG", leftX, fy + 3, sigW, sigH);
     if (firmaResponsable) doc.addImage(firmaResponsable, "PNG", rightX, fy + 3, sigW, sigH);
 
-    doc.save(`Minuta_${sede || "sede"}.pdf`);
+    // ===== Guardar =====
+    const nombre = `Minuta_${sede || "sede"}.pdf`;
+    doc.save(nombre);
   };
 
   return (
@@ -217,24 +275,17 @@ function App() {
 
         {/* Miniaturas + títulos */}
         {imagenes.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+          <div className="galeria">
             {imagenes.map((img, idx) => (
-              <div key={idx} style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                background: "#fff",
-                border: "1px solid #ddd",
-                borderRadius: 8,
-                padding: 8
-              }}>
+              <div key={idx} className="galeria-item">
                 <img
                   src={img.preview}
                   alt={`img-${idx}`}
-                  style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: "1px solid #ccc" }}
+                  className="thumb"
                 />
                 <input
                   type="text"
+                  className="titulo-foto"
                   placeholder="Título de la foto (aparece en el PDF)"
                   value={img.title}
                   onChange={(e) => updateImageTitle(idx, e.target.value)}
@@ -246,7 +297,7 @@ function App() {
 
         {/* Firmas */}
         <div className="firmas">
-          <div>
+          <div className="firma-box">
             <p><strong>Firma Técnico</strong></p>
             <SignatureCanvas
               ref={firmaTecnicoRef}
@@ -257,11 +308,13 @@ function App() {
                 className: "sigCanvas"
               }}
             />
-            <button className="limpiar" onClick={limpiarFirmaTecnico}>Limpiar Firma Técnico</button>
+            <button className="btn limpiar" onClick={limpiarFirmaTecnico}>
+              Limpiar Firma Técnico
+            </button>
           </div>
 
-          <div>
-            <p><strong>Firma Responsable</strong></p>
+          <div className="firma-box">
+            <p><strong>Firma Receptor</strong></p>
             <SignatureCanvas
               ref={firmaResponsableRef}
               penColor="black"
@@ -271,11 +324,15 @@ function App() {
                 className: "sigCanvas"
               }}
             />
-            <button className="limpiar" onClick={limpiarFirmaResponsable}>Limpiar Firma Responsable</button>
+            <button className="btn limpiar" onClick={limpiarFirmaResponsable}>
+              Limpiar Firma Receptor
+            </button>
           </div>
         </div>
 
-        <button className="enviar" onClick={generarPDF}>Generar PDF</button>
+        <button className="btn enviar" onClick={generarPDF}>
+          Generar PDF
+        </button>
       </div>
     </div>
   );
